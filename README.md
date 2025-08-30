@@ -25,6 +25,9 @@ llm_api/
 ```
 
 # todo
-
-hide open_api_key
+feat:
+impl claudia
 impl chat flow
+
+infra:
+save user token in db
