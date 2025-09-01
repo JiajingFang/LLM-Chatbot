@@ -31,3 +31,6 @@ impl chat flow
 
 infra:
 save user token in db
+add Dockerfile
+
+add more tests

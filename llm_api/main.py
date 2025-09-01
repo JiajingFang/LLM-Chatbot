@@ -9,6 +9,7 @@ from slowapi import Limiter
 from slowapi.util import get_remote_address
 from fastapi.middleware.cors import CORSMiddleware
 from datetime import datetime
+from llm_api.dependencies.auth import verify_token
 
 
 limiter = Limiter(key_func=get_remote_address)
@@ -30,28 +31,17 @@ def rate_limit_handler(request: Request, exc):
         content={"detail": "Too many requests, slow down!"}
     )
 
-# 模拟用户 token 数据库
-user_tokens = {
-    "user1_token": {"calls_today": 0, "last_reset": datetime.now()},
-    "user2_token": {"calls_today": 0, "last_reset": datetime.now()}
-}
 
 MAX_CALLS_PER_DAY = 100  # 每个 token 每天最多调用次数
 
 class ChatRequest(BaseModel):
     prompt: str
 
+
 # 示例路由
 @app.post("/chat")
 @limiter.limit("10/minute")
-async def chat(request: Request, body: ChatRequest):
-    headers = request.headers
-    token = headers.get("x-api-token")
-    if token not in user_tokens:
-        raise HTTPException(status_code=401, detail="Unauthorized")
-    
-    # 每天调用次数限制
-    user = user_tokens[token]
+async def chat(request: Request, body: ChatRequest, user=Depends(verify_token)):
     now = datetime.now()
     if now.date() != user["last_reset"].date():
         user["calls_today"] = 0
