@@ -26,8 +26,8 @@ llm_api/
 
 # todo
 feat:
-impl claudia
 impl chat flow
+impl rag
 
 infra:
 save user token in db
