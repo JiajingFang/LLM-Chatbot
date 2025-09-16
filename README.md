@@ -26,7 +26,6 @@ llm_api/
 
 # todo
 feat:
-impl chat flow
 impl rag
 
 infra:
