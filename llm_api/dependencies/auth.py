@@ -3,8 +3,8 @@ from datetime import datetime
 
 # 模拟用户 token 数据库
 user_tokens = {
-    "user1_token": {"calls_today": 0, "last_reset": datetime.now()},
-    "user2_token": {"calls_today": 0, "last_reset": datetime.now()}
+    "user1_token": {"calls_today": 0, "last_reset": datetime.now(), "user_name": "user1"},
+    "user2_token": {"calls_today": 0, "last_reset": datetime.now(), "user_name": "user2"},
 }
 
 def verify_token(x_api_token: str = Header(...)):

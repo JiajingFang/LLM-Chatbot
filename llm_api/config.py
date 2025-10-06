@@ -19,6 +19,8 @@ class Settings(BaseSettings):
     CLAUDE_API_MODEL: str = "claude-sonnet-4-20250514"
     TIMEOUT: int = 30
     VERSION: str = "0.1.0"
+    MONGO_URI: str = os.getenv("MONGO_URI", "mongodb://localhost:27017")
+    MONGO_DB: str = os.getenv("MONGO_DB", "llm_chatbot")
 
     class Config:
         env_file = ".env"

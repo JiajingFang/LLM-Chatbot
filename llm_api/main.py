@@ -62,7 +62,7 @@ async def chat(request: Request, body: ChatRequest, user=Depends(verify_token)):
         raise HTTPException(status_code=400, detail="Question is required")
     
     try:
-        response = await chat_endpoint(body.prompt)
+        response = await chat_endpoint(body.prompt, user["user_name"])
         user["calls_today"] += 1
         return response
     except Exception as e:
