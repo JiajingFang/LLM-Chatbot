@@ -14,8 +14,12 @@ class PromptRepository:
             "prompt": prompt,
             "timestamp": datetime.now(timezone.utc),
         }
-        await self.collection.update_one(
-            {"user_name": usr_name},
-            {"$push": {"prompts": prompt_entry}},
-            upsert=True
-        )
+        try:
+            await self.collection.update_one(
+                {"user_name": usr_name},
+                {"$push": {"prompts": prompt_entry}},
+                upsert=True
+            )
+        except Exception as e:
+            # Log the error or handle it as needed
+            print(f"Error saving prompt for {usr_name}: {e}")

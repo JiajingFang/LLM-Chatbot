@@ -42,7 +42,11 @@ async def call_openai(prompt):
 prompt_repo = PromptRepository(settings.MONGO_URI, settings.MONGO_DB)
 
 async def chat_endpoint(prompt: str, usr_name: str) -> dict:
-    await prompt_repo.save_prompt(prompt, usr_name)
+    try:
+        await prompt_repo.save_prompt(prompt, usr_name)
+    except Exception as e:
+        logger.error(f"Failed to save prompt for {usr_name}: {e}")
+        # Optionally, you can return an error response or continue
     openai_task = call_openai(prompt)
     claude_task = call_claude(prompt)
     response_openai, response_claude = await asyncio.gather(openai_task, claude_task)
