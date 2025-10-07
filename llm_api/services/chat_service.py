@@ -1,6 +1,7 @@
 # llm_api/services/chat_service.py
 from llm_api.config import settings
 from llm_api.utils.logger import get_logger
+from llm_api.models.repository import PromptRepository
 import httpx
 import anthropic
 import asyncio
@@ -38,7 +39,14 @@ async def call_openai(prompt):
             logger.info("OpenAI response received")
             return data
 
-async def chat_endpoint(prompt: str) -> dict:
+prompt_repo = PromptRepository(settings.MONGO_URI, settings.MONGO_DB)
+
+async def chat_endpoint(prompt: str, usr_name: str) -> dict:
+    try:
+        await prompt_repo.save_prompt(prompt, usr_name)
+    except Exception as e:
+        logger.error(f"Failed to save prompt for {usr_name}: {e}")
+        # Optionally, you can return an error response or continue
     openai_task = call_openai(prompt)
     claude_task = call_claude(prompt)
     response_openai, response_claude = await asyncio.gather(openai_task, claude_task)
