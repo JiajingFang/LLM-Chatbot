@@ -26,11 +26,9 @@ llm_api/
 ```
 
 # todo
-feat:
-impl rag
+0 docker-compose for frontend part && makefile clean
+1 show the answer better
+2 jwt and login page
+3 separate collection for compare and chat prompt
+4 save the answer
 
-infra:
-save user token in db
-add Dockerfile
-
-add more tests

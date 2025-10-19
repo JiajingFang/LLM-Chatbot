@@ -89,7 +89,7 @@ async def compare_llms(request: Request, body: ChatRequest, user=Depends(verify_
  
     
     try:
-        response = await chat_endpoint(body.prompt)
+        response = await chat_endpoint(body.prompt, user["user_name"])
         user["calls_today"] += 1
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
