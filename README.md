@@ -26,9 +26,12 @@ llm_api/
 ```
 
 # todo
-0 docker-compose for frontend part && makefile clean
-1 show the answer better
+1 show the answer better and change to english
+
 2 jwt and login page
+
 3 separate collection for compare and chat prompt
+
 4 save the answer
 
+5 auto deploy in git env(in react_deployment_guide local)

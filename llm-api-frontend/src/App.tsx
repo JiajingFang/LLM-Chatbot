@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import type { Mode, ChatResponse, CompareResponse } from './types';
 import { chatApi, compareApi } from './services/api';
 import { ModeSelector } from './components/ModeSelector';

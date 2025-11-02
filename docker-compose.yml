@@ -2,27 +2,29 @@ services:
   llm-api:
     build: .
     ports:
-      - "80:8000"
+      - "8000:8000"
     environment:
       - CLAUDE_API_KEY=${CLAUDE_API_KEY}
       - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - MONGO_URI=${MONGO_URI}
+      - MONGO_URI=mongodb://mongodb:27017
       - MONGO_DB=${MONGO_DB}
     container_name: llm-api
     restart: unless-stopped
     volumes:
       - ./logs:/app/logs
     depends_on:
-      mongo:
+      mongodb:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
       timeout: 10s
       retries: 3
-  mongo:
+  mongodb:
     image: mongo:latest
-    container_name: mongo
+    volumes:
+      - mongo_data:/data/db
+    container_name: mongodb
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "mongosh", "localhost:27017/test", "--quiet"]
@@ -31,3 +33,22 @@ services:
       retries: 3
     ports:
       - "2717:27017"
+  frontend:
+    build:
+      context: ./llm-api-frontend
+      dockerfile: Dockerfile
+    ports:
+      - "80:80"
+    container_name: llm-frontend
+    restart: unless-stopped
+    depends_on:
+      llm-api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  mongo_data:
