@@ -21,6 +21,9 @@ class Settings(BaseSettings):
     VERSION: str = "0.1.0"
     MONGO_URI: str = os.getenv("MONGO_URI", "mongodb://localhost:27017")
     MONGO_DB: str = os.getenv("MONGO_DB", "llm_chatbot")
+    JWT_SECRET_KEY: str = os.getenv("JWT_SECRET_KEY", "your-secret-key-change-in-production")
+    JWT_ALGORITHM: str = "HS256"
+    JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24  # 24 hours
 
     class Config:
         env_file = ".env"
