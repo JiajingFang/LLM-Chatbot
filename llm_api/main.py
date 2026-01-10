@@ -1,5 +1,5 @@
 # llm_api/main.py
-from fastapi import FastAPI, Depends, Request, HTTPException, Header
+from fastapi import FastAPI, Depends, Request, HTTPException
 from fastapi.responses import JSONResponse
 from slowapi.errors import RateLimitExceeded
 from llm_api.config import settings
@@ -8,9 +8,11 @@ from llm_api.services.chat_service import chat_endpoint
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 from fastapi.middleware.cors import CORSMiddleware
-from datetime import datetime
-from llm_api.dependencies.auth import verify_token
+from datetime import datetime, timezone, timedelta
+from llm_api.dependencies.auth import verify_token, get_user_repository
 from llm_api.services.comparison import compare_with_openai
+from llm_api.models.user_repository import UserRepository
+from llm_api.utils.jwt import create_access_token
 import time
 
 
@@ -39,6 +41,19 @@ MAX_CALLS_PER_DAY = 100  # max calls per user per day
 class ChatRequest(BaseModel):
     prompt: str
 
+class LoginRequest(BaseModel):
+    username: str
+    password: str
+
+class RegisterRequest(BaseModel):
+    username: str
+    password: str
+
+class TokenResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    username: str
+
 class ComparisonResponse(BaseModel):
     claude_response: str
     openai_response: str
@@ -50,11 +65,23 @@ class ComparisonResponse(BaseModel):
 
 @app.post("/chat")
 @limiter.limit("10/minute")
-async def chat(request: Request, body: ChatRequest, user=Depends(verify_token)):
-    now = datetime.now()
-    if now.date() != user["last_reset"].date():
+async def chat(
+    request: Request,
+    body: ChatRequest,
+    user=Depends(verify_token),
+    user_repo: UserRepository = Depends(get_user_repository)
+):
+    now = datetime.now(timezone.utc)
+    if isinstance(user["last_reset"], datetime):
+        last_reset = user["last_reset"]
+    else:
+        last_reset = datetime.now(timezone.utc)
+    
+    if now.date() != last_reset.date():
         user["calls_today"] = 0
         user["last_reset"] = now
+        # Update in database
+        await user_repo.update_user_usage(user["user_name"], 0, now)
 
     if user["calls_today"] >= MAX_CALLS_PER_DAY:
         raise HTTPException(status_code=429, detail="Daily call limit exceeded")
@@ -64,6 +91,8 @@ async def chat(request: Request, body: ChatRequest, user=Depends(verify_token)):
     try:
         response = await chat_endpoint(body.prompt, user["user_name"])
         user["calls_today"] += 1
+        # Update in database
+        await user_repo.update_user_usage(user["user_name"], user["calls_today"], user["last_reset"])
         return response
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -74,13 +103,77 @@ def health():
     return {"status": "ok", "version": settings.VERSION}
 
 
+@app.post("/register", response_model=TokenResponse)
+async def register(
+    body: RegisterRequest,
+    user_repo: UserRepository = Depends(get_user_repository)
+):
+    """Register a new user"""
+    if not body.username or not body.password:
+        raise HTTPException(status_code=400, detail="Username and password are required")
+    
+    if len(body.password) < 6:
+        raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
+    
+    try:
+        user = await user_repo.create_user(body.username, body.password)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Registration failed: {str(e)}")
+    
+    # Create access token
+    access_token = create_access_token(data={"sub": user["username"]})
+    
+    return TokenResponse(
+        access_token=access_token,
+        token_type="bearer",
+        username=user["username"]
+    )
+
+
+@app.post("/login", response_model=TokenResponse)
+async def login(
+    body: LoginRequest,
+    user_repo: UserRepository = Depends(get_user_repository)
+):
+    """Login and get access token"""
+    if not body.username or not body.password:
+        raise HTTPException(status_code=400, detail="Username and password are required")
+    
+    user = await user_repo.authenticate_user(body.username, body.password)
+    if not user:
+        raise HTTPException(status_code=401, detail="Incorrect username or password")
+    
+    # Create access token
+    access_token = create_access_token(data={"sub": user["username"]})
+    
+    return TokenResponse(
+        access_token=access_token,
+        token_type="bearer",
+        username=user["username"]
+    )
+
+
 @app.post("/compare", response_model=ComparisonResponse)
 @limiter.limit("10/minute")
-async def compare_llms(request: Request, body: ChatRequest, user=Depends(verify_token)):
-    now = datetime.now()
-    if now.date() != user["last_reset"].date():
+async def compare_llms(
+    request: Request,
+    body: ChatRequest,
+    user=Depends(verify_token),
+    user_repo: UserRepository = Depends(get_user_repository)
+):
+    now = datetime.now(timezone.utc)
+    if isinstance(user["last_reset"], datetime):
+        last_reset = user["last_reset"]
+    else:
+        last_reset = datetime.now(timezone.utc)
+    
+    if now.date() != last_reset.date():
         user["calls_today"] = 0
         user["last_reset"] = now
+        # Update in database
+        await user_repo.update_user_usage(user["user_name"], 0, now)
 
     if user["calls_today"] >= MAX_CALLS_PER_DAY:
         raise HTTPException(status_code=429, detail="Daily call limit exceeded")
@@ -91,6 +184,8 @@ async def compare_llms(request: Request, body: ChatRequest, user=Depends(verify_
     try:
         response = await chat_endpoint(body.prompt, user["user_name"])
         user["calls_today"] += 1
+        # Update in database
+        await user_repo.update_user_usage(user["user_name"], user["calls_today"], user["last_reset"])
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     if response is None or "response" not in response:
