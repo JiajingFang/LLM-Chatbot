@@ -28,7 +28,7 @@ llm_api/
 # todo
 1 show the answer better and change to english
 
-2 jwt and login page
+2 login & register page
 
 3 separate collection for compare and chat prompt
 
